@@ -1,0 +1,31 @@
+# The execution sandbox image (V2).
+#
+# Each question runs in a fresh container from this image with:
+#   --network none           (no network access)
+#   --memory / --cpus        (hard resource caps)
+#   --pids-limit             (fork-bomb guard)
+#   --read-only + tmpfs      (immutable FS except a small scratch space)
+#   non-root user            (no privileges inside)
+# The data file is mounted read-only; results come back via a mounted work dir.
+FROM python:3.11-slim
+
+# Data + ML libs the generated code may use. A real analyst's toolkit, so the
+# agent can do statistics, modelling, and forecasting — not just groupby.
+RUN pip install --no-cache-dir \
+        "pandas>=2.2" "numpy>=1.26" "matplotlib>=3.8" "openpyxl>=3.1" \
+        "scikit-learn>=1.5" "scipy>=1.13" "statsmodels>=0.14" "seaborn>=0.13" \
+    && rm -rf /root/.cache
+
+# Headless plotting, no font cache writes at runtime
+ENV MPLBACKEND=Agg \
+    MPLCONFIGDIR=/tmp/mpl \
+    PYTHONDONTWRITEBYTECODE=1
+
+# The runner is baked in so it cannot be tampered with from outside.
+COPY app/execution/runner.py /app/runner.py
+
+# Drop privileges: code runs as an unprivileged user.
+RUN useradd --create-home --uid 10001 sandboxer
+USER sandboxer
+
+ENTRYPOINT ["python", "/app/runner.py"]

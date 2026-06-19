@@ -1,0 +1,9 @@
+# Base theme for the DataPilot AI frontend. The detailed glassmorphic styling is
+# applied via CSS in frontend/theme.py; this just sets sane dark defaults so there
+# is no light-mode flash before the CSS loads.
+[theme]
+base = "dark"
+primaryColor = "#d0bcff"
+backgroundColor = "#050505"
+secondaryBackgroundColor = "#15121b"
+textColor = "#e7e0ed"

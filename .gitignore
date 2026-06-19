@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Secrets & local state
+.env
+backend/.env
+.sessions/
+backend/.sessions/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tooling (Claude Code, etc.) — not part of the project
+.claude/
+
+# Design reference (Stitch export, kept locally only)
+_design_ref/
+
+# Archives / large local files — never push (kept on disk, out of git)
+*.zip
+*.tar
+*.tar.gz
+
+# Binary docs (HF Spaces rejects binaries in plain git; keep locally only)
+*.pdf

@@ -1,0 +1,6 @@
+# Force Unix (LF) line endings for files that execute inside the Linux container,
+# so a Windows checkout (CRLF) can't break the build/startup.
+* text=auto eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.png binary

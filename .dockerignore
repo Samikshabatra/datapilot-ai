@@ -1,0 +1,25 @@
+# Build context is the repo root, so THIS file governs what enters the image.
+# Secrets — never copy into the image.
+.env
+*.env
+**/.env
+backend/.env
+
+# Virtualenvs
+.venv/
+**/.venv/
+venv/
+
+# Local session data (uploaded files, may contain user data) + caches
+.sessions/
+**/.sessions/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+
+# Dev-only / not needed at runtime
+.git/
+_design_ref/
+*.zip
+docs/
+**/tests/

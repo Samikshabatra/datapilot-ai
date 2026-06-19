@@ -1,0 +1,16 @@
+# Never copy secrets or local state into an image.
+.env
+*.env
+.sessions/
+.venv/
+venv/
+
+# Python/build cruft
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Not needed in the API image
+tests/
+sandbox/
