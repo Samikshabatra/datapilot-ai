@@ -8,102 +8,84 @@ app_port: 7860
 pinned: false
 ---
 
-# Autonomous Data Analyst Agent
+# 🧭 DataPilot AI — Autonomous Data Analyst
 
-Upload a dataset, ask a question in plain language. An agent writes Python, runs it
-in a sandbox, **observes the result, and self-corrects on errors** — then returns the
-answer, a chart, and the exact code that produced it. Every step is verifiable.
+**Upload a dataset, ask a question in plain English. An AI agent writes Python, runs it in a sandbox, observes the result, fixes its own errors, and replies with an answer, a chart, and the exact code it ran — so every step is verifiable.**
 
-The defensible mechanism: **write code → execute → observe → self-correct.**
+### ▶️ [**Try the live demo**](https://huggingface.co/spaces/samikshabatra18/datapilot-ai) · 💻 [Source on GitHub](https://github.com/Samikshabatra/datapilot-ai)
 
-## Status — V1 (the core loop)
+> The live app is **bring-your-own-key**: paste a free [Google Gemini API key](https://aistudio.google.com/apikey) in the sidebar — it's used only for your requests and never stored. Then upload a CSV (or use the bundled sample) and ask away.
 
-| Capability | State |
-|---|---|
-| CSV / Excel upload + schema profiling (schema-not-data to the LLM) | ✅ |
-| Prompt assembly from versioned templates | ✅ |
-| Code generation via Anthropic (direct API, no framework) | ✅ |
-| Sandboxed execution (separate process, hard timeout, scrubbed env) | ✅ |
-| Self-correction loop with smart exit (same-error / clarify-vs-retry) | ✅ |
-| Transparent response: answer + chart + code + full attempt trail | ✅ |
-| Streamlit UI | ✅ |
+---
 
-## Status — V2 (making it a product)
+## What makes it more than "an LLM that writes code"
 
-| Capability | State |
-|---|---|
-| Docker sandbox: per-run container, no network, capped CPU/mem, read-only FS | ✅ |
-| Provider-agnostic LLM layer (Gemini active; Anthropic fallback) | ✅ |
-| Tabular results rendered as real tables | ✅ |
-| ML-engineer proficiency: sklearn/scipy/statsmodels/seaborn + senior-DS prompt | ✅ |
-| Answer synthesis: expert interpretation of the computed result (not raw values) | ✅ |
-| Conversation memory: follow-up questions resolve against prior turns | ✅ |
-| Auto-EDA on upload (instant overview, reuses the engine) | ✅ |
-| Deploy to public URL | ⏳ |
-
-V3 (ML on request as a first-class feature, forecasting, caching) is scoped in
-[`docs/architecture.md`](docs/architecture.md).
-
-## Architecture at a glance
+The defensible mechanism is a closed loop, not a one-shot generation:
 
 ```
-Frontend (Streamlit) → FastAPI → Orchestrator (state machine)
-                                    ├─ Profiler      (schema the LLM sees)
-                                    ├─ Prompt Builder (versioned templates)
-                                    ├─ LLM Client     (provider-agnostic)
-                                    └─ Executor       (interface: subprocess→Docker)
-                                         ↑ the one pluggable boundary
+        ┌─────────────────────────────────────────────┐
+        │                                             ▼
+   ① question + schema → ② LLM writes Python → ③ run in sandbox
+        ▲                                             │
+        └──────────  ④ observe result / error  ◄──────┘
+              (self-correct, up to N times)
+                                │
+                    ⑤ synthesize an expert answer
 ```
 
-The **Executor interface** is the key decision: the orchestrator never knows whether
-code ran in a subprocess (V1) or a Docker container (V2). Swapping sandboxes is a
-config flip, not a rewrite. See [`docs/decisions/`](docs/decisions/).
+- **Schema, not data, goes to the LLM.** A profiler sends column names, types, null counts and a few sample rows — so a 2M-row file works against a model that only ever sees a few thousand tokens. The generated code runs against the *full* dataframe locally.
+- **It self-corrects.** If the code errors, the traceback is fed back and the agent fixes its own code — stopping early only when it's genuinely stuck (identical retry) or when the question can't be answered from the data (it asks for clarification instead of looping).
+- **It always shows its work.** Every answer ships with the code, the reasoning, and the full self-correction trail. Transparency is the safety net.
 
-## Run it
+## Features
+
+- 📊 **Natural-language analytics** on uploaded CSV/Excel — answers, tables, and charts
+- 🧠 **ML-engineer proficiency** — picks the right method (regression, statistical tests, forecasting, clustering) using scikit-learn / scipy / statsmodels / seaborn, and interprets the results, caveats and all
+- 🔁 **Self-correcting agent loop** with bounded retries and smart exit conditions
+- 💬 **Conversation memory** — follow-ups like *"now break that down by region"* resolve in context
+- 📋 **One-click EDA** — an instant exploratory overview of any new dataset
+- 📓 **Export the session** as a runnable `.ipynb` notebook or `.py` script
+- 🔒 **Sandboxed execution** — subprocess (timeout + scrubbed env) or a locked-down Docker container (no network, capped CPU/memory, read-only FS, non-root)
+- 🎨 Polished glassmorphic UI
+
+## Architecture
+
+```
+Frontend (Streamlit)  →  FastAPI  →  Orchestrator (explicit state machine)
+                                       ├─ Profiler        (the schema the LLM sees)
+                                       ├─ Prompt Builder  (versioned templates)
+                                       ├─ LLM Client      (provider-agnostic: Gemini / Anthropic)
+                                       └─ Executor        (interface: subprocess ⇄ Docker)
+                                            ↑ the one pluggable boundary
+```
+
+The **`Executor` interface** is the key design decision: the orchestrator never knows whether code ran in a subprocess or a Docker container — swapping sandboxes is a config flip, not a rewrite. The reasoning behind the main choices is written up as ADRs in [`docs/decisions/`](docs/decisions/), and the isolation model in [`docs/security.md`](docs/security.md).
+
+## Tech stack
+
+**Python · FastAPI · Streamlit · Google Gemini (provider-agnostic) · pandas / NumPy · scikit-learn / SciPy / statsmodels / seaborn · Docker · pytest**, deployed on **Hugging Face Spaces**.
+
+## Run it locally
 
 ```bash
 cd backend
-python -m venv .venv && .venv\Scripts\activate        # Windows
+python -m venv .venv && .venv\Scripts\activate         # Windows
 pip install -e ".[frontend,dev]"
 
-# tests — no API key needed (mock LLM + real sandbox)
-pytest
+pytest                                                  # tests need no API key (mock LLM + real sandbox)
 
-# backend (this project uses port 8010; 8000 is often held by Docker/WSL forwards)
-copy ..\.env.example .env       # add your AAA_GEMINI_API_KEY
-uvicorn app.main:app --reload --port 8010
-
-# frontend (separate terminal) — defaults to talking to localhost:8010
-streamlit run ..\frontend\streamlit_app.py
+uvicorn app.main:app --reload --port 8010               # backend
+streamlit run ..\frontend\streamlit_app.py              # frontend (separate terminal)
 ```
 
-Then open the Streamlit URL, upload `sample_data/sales.csv`, and ask:
-*"Which region has the highest total revenue?"* or *"Plot revenue over time."*
+Open the Streamlit URL, paste your Gemini key in the sidebar (or set `AAA_GEMINI_API_KEY` in `backend/.env`), upload `sample_data/sales.csv`, and ask *"Which region has the highest total revenue?"*
 
-## V2 — Docker sandbox (real isolation)
-
-The `DockerExecutor` implements the same `Executor` interface as V1, so switching is
-a config flip — the orchestrator and loop are unchanged. Each question runs in a fresh
-container: `--network none`, capped memory/CPU, `--pids-limit`, read-only filesystem
-(+ small tmpfs), non-root user, dataset mounted read-only, container destroyed after.
-
-```powershell
-# 1. Start Docker Desktop (from the Start menu) and wait for "Engine running".
-# 2. Build the sandbox image (run from backend/, the build context):
-docker build -t aaa-sandbox:latest -f sandbox/Dockerfile.runner .
-
-# 3. Switch the backend to docker in backend/.env:
-#      AAA_EXECUTOR_BACKEND=docker
-# 4. Restart uvicorn. That's it — same loop, real isolation.
+**Real Docker sandbox (optional):** build the image and flip one config value —
+```bash
+docker build -t aaa-sandbox:latest -f sandbox/Dockerfile.runner .   # from backend/
+# then set AAA_EXECUTOR_BACKEND=docker in backend/.env and restart
 ```
 
-To go back to the V1 subprocess sandbox, set `AAA_EXECUTOR_BACKEND=subprocess`.
+## A note on the sandbox (stated honestly)
 
-## Honest note on the V1 sandbox
-
-The V1 executor is a **separate process with a hard timeout and a scrubbed
-environment** — enough to stop runaway code and keep secrets out of generated code.
-It is **not** a security boundary: a subprocess can still reach the filesystem and
-network. Real isolation (no network, capped CPU/memory, ephemeral filesystem) is the
-`DockerExecutor` in V2, which implements the same interface. Naming this limit is
-deliberate — see [`docs/security.md`](docs/security.md).
+The subprocess executor (used by the public demo) runs code in a separate process with a hard timeout and a scrubbed environment — enough to stop runaway code and keep secrets out of generated code, but **not** a true security boundary. Real isolation — no network, capped CPU/memory, ephemeral filesystem, non-root — is the `DockerExecutor`, which implements the same interface. Naming that limit is deliberate.
