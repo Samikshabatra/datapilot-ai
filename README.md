@@ -67,3 +67,7 @@ User Upload → Dataset Profiling → LLM Agent → Code Generation → Sandbox 
 **Samiksha Batra**
 M.Sc. Artificial Intelligence and Machine Learning
 CHRIST (Deemed to be University), Bengaluru
+
+## License
+
+Released under the [MIT License](LICENSE).
